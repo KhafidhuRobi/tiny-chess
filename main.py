@@ -1,473 +1,68 @@
-import json, os, urllib.request
+import chess
 
-U = os.environ.get("MAKEFUN_ENV_URL")
+def evaluate_board(board: chess.Board) -> int:
+    if board.is_checkmate():
+        return -99999 if board.turn else 99999
+    if board.is_stalemate() or board.is_insufficient_material():
+        return 0
 
+    piece_values = {
+        chess.PAWN: 100,
+        chess.KNIGHT: 320,
+        chess.BISHOP: 330,
+        chess.ROOK: 500,
+        chess.QUEEN: 900,
+        chess.KING: 20000
+    }
 
-def api(p, d=None):
-  req = urllib.request.Request(
-      U + p,
-      data=json.dumps(d).encode() if d else None,
-      headers={"content-type": "application/json"},
-  )
-  with urllib.request.urlopen(req) as r:
-    return json.load(r)
+    score = 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            val = piece_values.get(piece.piece_type, 0)
+            if piece.color == board.turn:
+                score += val
+            else:
+                score -= val
+    return score
 
+def minimax(board: chess.Board, depth: int, maximizing: bool) -> int:
+    if depth == 0 or board.is_game_over():
+        return evaluate_board(board)
 
-V = {"p": 100, "n": 320, "b": 330, "r": 500, "q": 900, "k": 20000}
-PST = {
-    "p": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        50,
-        50,
-        50,
-        50,
-        50,
-        50,
-        50,
-        50,
-        10,
-        10,
-        20,
-        30,
-        30,
-        20,
-        10,
-        10,
-        5,
-        5,
-        10,
-        25,
-        25,
-        10,
-        5,
-        5,
-        0,
-        0,
-        0,
-        20,
-        20,
-        0,
-        0,
-        0,
-        5,
-        -5,
-        -10,
-        0,
-        0,
-        -10,
-        -5,
-        5,
-        5,
-        10,
-        10,
-        -20,
-        -20,
-        10,
-        10,
-        5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-    ],
-    "n": [
-        -50,
-        -40,
-        -30,
-        -30,
-        -30,
-        -30,
-        -40,
-        -50,
-        -40,
-        -20,
-        0,
-        0,
-        0,
-        0,
-        -20,
-        -40,
-        -30,
-        0,
-        10,
-        15,
-        15,
-        10,
-        0,
-        -30,
-        -30,
-        5,
-        15,
-        20,
-        20,
-        15,
-        5,
-        -30,
-        -30,
-        0,
-        15,
-        20,
-        20,
-        15,
-        0,
-        -30,
-        -30,
-        5,
-        10,
-        15,
-        15,
-        10,
-        5,
-        -30,
-        -40,
-        -20,
-        0,
-        5,
-        5,
-        0,
-        -20,
-        -40,
-        -50,
-        -40,
-        -30,
-        -30,
-        -30,
-        -30,
-        -40,
-        -50,
-    ],
-    "b": [
-        -20,
-        -10,
-        -10,
-        -10,
-        -10,
-        -10,
-        -10,
-        -20,
-        -10,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -10,
-        -10,
-        0,
-        5,
-        10,
-        10,
-        5,
-        0,
-        -10,
-        -10,
-        5,
-        5,
-        10,
-        10,
-        5,
-        5,
-        -10,
-        -10,
-        0,
-        10,
-        10,
-        10,
-        10,
-        0,
-        -10,
-        -10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        -10,
-        -10,
-        5,
-        0,
-        0,
-        0,
-        0,
-        5,
-        -10,
-        -20,
-        -10,
-        -10,
-        -10,
-        -10,
-        -10,
-        -10,
-        -20,
-    ],
-    "r": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        5,
-        10,
-        10,
-        10,
-        10,
-        10,
-        10,
-        5,
-        -5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -5,
-        -5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -5,
-        -5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -5,
-        -5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -5,
-        -5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -5,
-        0,
-        0,
-        0,
-        5,
-        5,
-        0,
-        0,
-        0,
-    ],
-    "q": [
-        -20,
-        -10,
-        -10,
-        -5,
-        -5,
-        -10,
-        -10,
-        -20,
-        -10,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        -10,
-        -10,
-        0,
-        5,
-        5,
-        5,
-        5,
-        0,
-        -10,
-        -5,
-        0,
-        5,
-        5,
-        5,
-        5,
-        0,
-        -5,
-        0,
-        0,
-        5,
-        5,
-        5,
-        5,
-        0,
-        -5,
-        -10,
-        5,
-        5,
-        5,
-        5,
-        5,
-        0,
-        -10,
-        -10,
-        0,
-        5,
-        0,
-        0,
-        0,
-        0,
-        -10,
-        -20,
-        -10,
-        -10,
-        -5,
-        -5,
-        -10,
-        -10,
-        -20,
-    ],
-    "k": [
-        -30,
-        -40,
-        -40,
-        -50,
-        -50,
-        -40,
-        -40,
-        -30,
-        -30,
-        -40,
-        -40,
-        -50,
-        -50,
-        -40,
-        -40,
-        -30,
-        -30,
-        -40,
-        -40,
-        -50,
-        -50,
-        -40,
-        -40,
-        -30,
-        -30,
-        -40,
-        -40,
-        -50,
-        -50,
-        -40,
-        -40,
-        -30,
-        -20,
-        -30,
-        -30,
-        -40,
-        -40,
-        -30,
-        -30,
-        -20,
-        -10,
-        -20,
-        -20,
-        -20,
-        -20,
-        -20,
-        -20,
-        -10,
-        20,
-        20,
-        0,
-        0,
-        0,
-        0,
-        20,
-        20,
-        20,
-        30,
-        10,
-        0,
-        0,
-        10,
-        30,
-        20,
-    ],
-}
+    legal_moves = list(board.legal_moves)
+    if maximizing:
+        max_eval = -999999
+        for move in legal_moves:
+            board.push(move)
+            eval = minimax(board, depth - 1, False)
+            board.pop()
+            max_eval = max(max_eval, eval)
+        return max_eval
+    else:
+        min_eval = 999999
+        for move in legal_moves:
+            board.push(move)
+            eval = minimax(board, depth - 1, True)
+            board.pop()
+            min_eval = min(min_eval, eval)
+        return min_eval
 
+def get_move(board: chess.Board) -> chess.Move:
+    legal_moves = list(board.legal_moves)
+    if not legal_moves:
+        return None
 
-def parse(fen):
-  b = {}
-  for r, row in enumerate(fen.split()[0].split("/")):
-    f = 0
-    for ch in row:
-      if ch.isdigit():
-        f += int(ch)
-      else:
-        b[(7 - r, f)] = ch
-        f += 1
-  return b
+    best_move = legal_moves[0]
+    best_value = -999999
+    
+    for move in legal_moves:
+        board.push(move)
+        value = -minimax(board, 1, False)
+        board.pop()
+        
+        if value > best_value:
+            best_value = value
+            best_move = move
 
-
-def eval_board(b, turn):
-  s = 0
-  for (r, f), p in b.items():
-    w, pt = p.isupper(), p.lower()
-    val = V.get(pt, 0)
-    idx = r * 8 + f if w else (7 - r) * 8 + f
-    pst = PST[pt][idx] if pt in PST else 0
-    s += (val + pst) if w else -(val + pst)
-  return s if turn == "w" else -s
-
-
-while True:
-  g = api("/game")
-  if g.get("status") == "done":
-    break
-  while g.get("status") == "your_move":
-    fen, moves = g["fen"], g["legal_moves"]
-    if not moves:
-      break
-    board = parse(fen)
-    turn = fen.split()[1]
-    best_m, best_val = moves[0], -999999
-    for m in moves:
-      b2 = dict(board)
-      f1, r1, f2, r2 = (
-          ord(m[0]) - 97,
-          int(m[1]) - 1,
-          ord(m[2]) - 97,
-          int(m[3]) - 1,
-      )
-      p = b2.pop((r1, f1), None)
-      if p:
-        if len(m) == 5:
-          p = m[4].upper() if p.isupper() else m[4]
-        b2[(r2, f2)] = p
-      target = board.get((r2, f2))
-      val = eval_board(b2, "b" if turn == "w" else "w")
-      if target:
-        val += V.get(target.lower(), 0) * 10 - V.get(p.lower(), 1)
-      if len(m) == 5:
-        val += V.get(m[4], 0) * 5
-      if val > best_val:
-        best_val, best_m = val, m
-    g = api("/move", {"game": g["game"], "move": best_m})
+    return best_move
